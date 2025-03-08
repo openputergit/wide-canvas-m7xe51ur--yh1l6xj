@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Restaurant Management System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<style>
+    * {
+        font-family: 'Inter', sans-serif;
+    }
+    .print-only {
+        display: none;
+    }
+    @media print {
+        .no-print {
+            display: none !important;
+        }
+        .print-only {
+            display: block;
+        }
+    }
+    .loading {
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+</style>
+<body class="bg-gray-50">
+    <!-- Login Screen -->
+    <div id="loginScreen" class="min-h-screen flex items-center justify-center p-4">
+        <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
+            <h2 class="text-2xl font-bold text-[#2B6CB0] mb-6">Restaurant Management System</h2>
+            <div class="space-y-4">
+                <input type="email" id="email" placeholder="Email" class="w-full p-3 border rounded-lg">
+                <input type="password" id="password" placeholder="Password" class="w-full p-3 border rounded-lg">
+                <button onclick="login()" class="w-full bg-[#2B6CB0] text-white p-3 rounded-lg hover:bg-[#2C5282]">
+                    Login
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Dashboard -->
+    <div id="dashboard" class="hidden min-h-screen">
+        <!-- Sidebar -->
+        <div class="fixed top-0 left-0 h-full w-64 bg-[#2B6CB0] text-white p-4 no-print">
+            <h2 class="text-xl font-bold mb-8">RestaurantOS</h2>
+            <nav class="space-y-2">
+                <button onclick="switchView('restaurants')" class="w-full text-left p-3 hover:bg-[#2C5282] rounded-lg">
+                    <i class="bi bi-shop mr-2"></i> Restaurants
+                </button>
+                <button onclick="switchView('orders')" class="w-full text-left p-3 hover:bg-[#2C5282] rounded-lg">
+                    <i class="bi bi-receipt mr-2"></i> Orders
+                </button>
+                <button onclick="switchView('menu')" class="w-full text-left p-3 hover:bg-[#2C5282] rounded-lg">
+                    <i class="bi bi-menu-button-wide mr-2"></i> Menu
+                </button>
+                <button onclick="switchView('users')" class="w-full text-left p-3 hover:bg-[#2C5282] rounded-lg">
+                    <i class="bi bi-people mr-2"></i> Users
+                </button>
+                <button onclick="switchView('reports')" class="w-full text-left p-3 hover:bg-[#2C5282] rounded-lg">
+                    <i class="bi bi-graph-up mr-2"></i> Reports
+                </button>
+                <button onclick="logout()" class="w-full text-left p-3 hover:bg-[#2C5282] rounded-lg">
+                    <i class="bi bi-box-arrow-right mr-2"></i> Logout
+                </button>
+            </nav>
+        </div>
+
+        <!-- Main Content -->
+        <div class="ml-64 p-8">
+            <!-- Restaurants View -->
+            <div id="restaurantsView" class="space-y-6">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-2xl font-bold">Restaurants</h2>
+                    <button onclick="showAddRestaurantModal()" class="bg-[#2B6CB0] text-white px-4 py-2 rounded-lg">
+                        <i class="bi bi-plus"></i> Add Restaurant
+                    </button>
+                </div>
+                <div id="restaurantsList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Restaurants will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Orders View -->
+            <div id="ordersView" class="hidden space-y-6">
+                <h2 class="text-2xl font-bold">Orders</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="ordersList">
+                    <!-- Orders will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Other views will be added here -->
+        </div>
+    </div>
+
+    <!-- Add Restaurant Modal -->
+    <div id="addRestaurantModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 class="text-xl font-bold mb-4">Add New Restaurant</h3>
+            <div class="space-y-4">
+                <input type="text" id="restaurantName" placeholder="Restaurant Name" class="w-full p-3 border rounded-lg">
+                <input type="text" id="restaurantAddress" placeholder="Address" class="w-full p-3 border rounded-lg">
+                <input type="tel" id="restaurantPhone" placeholder="Phone" class="w-full p-3 border rounded-lg">
+                <div class="flex justify-end space-x-3">
+                    <button onclick="closeAddRestaurantModal()" class="px-4 py-2 border rounded-lg">Cancel</button>
+                    <button onclick="addRestaurant()" class="px-4 py-2 bg-[#2B6CB0] text-white rounded-lg">Add</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+// Generate a unique user ID and store it
+let userId = localStorage.getItem('userId') || `user-${Date.now()}`;
+localStorage.setItem('userId', userId);
+
+const appSlug = 'restaurant-management-system';
+
+// Database initialization
+async function initializeDatabase() {
+    try {
+        const response = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/db', {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer CyenCHVrRAMz8kpc5xC7eAEG0iX2',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                userId: userId,
+                appSlug: appSlug,
+                action: 'read',
+                table: 'restaurants'
+            })
+        });
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Database initialization failed:', error);
+    }
+}
+
+// Login function
+async function login() {
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    
+    // For demo purposes, using simple validation
+    if (email === 'admin@example.com' && password === 'admin') {
+        document.getElementById('loginScreen').classList.add('hidden');
+        document.getElementById('dashboard').classList.remove('hidden');
+        loadRestaurants();
+    } else {
+        alert('Invalid credentials');
+    }
+}
+
+// Logout function
+function logout() {
+    document.getElementById('dashboard').classList.add('hidden');
+    document.getElementById('loginScreen').classList.remove('hidden');
+}
+
+// Switch between views
+function switchView(view) {
+    const views = ['restaurants', 'orders', 'menu', 'users', 'reports'];
+    views.forEach(v => {
+        const element = document.getElementById(`${v}View`);
+        if (element) {
+            element.classList.add('hidden');
+        }
+    });
+    const activeView = document.getElementById(`${view}View`);
+    if (activeView) {
+        activeView.classList.remove('hidden');
+    }
+}
+
+// Restaurant management
+async function loadRestaurants() {
+    const restaurantsList = document.getElementById('restaurantsList');
+    restaurantsList.innerHTML = '<div class="loading"><i class="bi bi-arrow-repeat text-4xl text-[#2B6CB0]"></i></div>';
+
+    try {
+        const data = await initializeDatabase();
+        if (data.data && data.data.length > 0) {
+            restaurantsList.innerHTML = data.data.map(restaurant => `
+                <div class="bg-white p-6 rounded-lg shadow-lg">
+                    <h3 class="text-xl font-bold mb-2">${restaurant.data.name}</h3>
+                    <p class="text-gray-600 mb-2">${restaurant.data.address}</p>
+                    <p class="text-gray-600 mb-4">${restaurant.data.phone}</p>
+                    <div class="flex space-x-2">
+                        <button onclick="editRestaurant('${restaurant.id}')" 
+                                class="px-3 py-1 bg-[#2B6CB0] text-white rounded-lg">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button onclick="deleteRestaurant('${restaurant.id}')"
+                                class="px-3 py-1 bg-red-500 text-white rounded-lg">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            restaurantsList.innerHTML = '<p class="text-gray-500">No restaurants found</p>';
+        }
+    } catch (error) {
+        restaurantsList.innerHTML = '<p class="text-red-500">Error loading restaurants</p>';
+    }
+}
+
+// Modal management
+function showAddRestaurantModal() {
+    document.getElementById('addRestaurantModal').classList.remove('hidden');
+}
+
+function closeAddRestaurantModal() {
+    document.getElementById('addRestaurantModal').classList.add('hidden');
+}
+
+async function addRestaurant() {
+    const name = document.getElementById('restaurantName').value;
+    const address = document.getElementById('restaurantAddress').value;
+    const phone = document.getElementById('restaurantPhone').value;
+
+    if (!name || !address || !phone) {
+        alert('Please fill all fields');
+        return;
+    }
+
+    try {
+        const response = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/db', {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer CyenCHVrRAMz8kpc5xC7eAEG0iX2',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                userId: userId,
+                appSlug: appSlug,
+                action: 'create',
+                table: 'restaurants',
+                data: { name, address, phone }
+            })
+        });
+
+        if (response.ok) {
+            closeAddRestaurantModal();
+            loadRestaurants();
+        } else {
+            alert('Failed to add restaurant');
+        }
+    } catch (error) {
+        console.error('Error adding restaurant:', error);
+        alert('Error adding restaurant');
+    }
+}
+
+async function deleteRestaurant(id) {
+    if (!confirm('Are you sure you want to delete this restaurant?')) return;
+
+    try {
+        const response = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/db', {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer CyenCHVrRAMz8kpc5xC7eAEG0iX2',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                userId: userId,
+                appSlug: appSlug,
+                action: 'delete',
+                table: 'restaurants',
+                id: id
+            })
+        });
+
+        if (response.ok) {
+            loadRestaurants();
+        } else {
+            alert('Failed to delete restaurant');
+        }
+    } catch (error) {
+        console.error('Error deleting restaurant:', error);
+        alert('Error deleting restaurant');
+    }
+}
+
+// Initialize the application
+document.addEventListener('DOMContentLoaded', () => {
+    // Start with login screen
+    document.getElementById('loginScreen').classList.remove('hidden');
+    document.getElementById('dashboard').classList.add('hidden');
+});
+</script>
+<script>document.body.addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); return }, { passive: false })</script>
+	</body>
+</html>
